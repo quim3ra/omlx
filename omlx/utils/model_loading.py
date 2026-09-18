@@ -1329,6 +1329,22 @@ def maybe_load_custom_quantization(
         )
         return None
 
+    from ..patches.mlx_vlm_prism_hadamard import (
+        is_supported_config as _is_prism_hadamard_pack,
+        load as _load_prism_hadamard_pack,
+    )
+
+    if is_vlm and _is_prism_hadamard_pack(config):
+        # Prism ML "Hadamard" packs (Ternary Bonsai 2) store their language
+        # projections in a rotated basis ... mlx-lm / mlx-vlm do not apply the
+        # matching activation transform, so they return *wrong output rather
+        # than an error*. Use the pack's bundled loader instead.
+        logger.info(
+            "Prism Hadamard pack detected for %s; using its bundled loader",
+            model_name,
+        )
+        return _load_prism_hadamard_pack(model_name)
+
     quant_config = config.get("quantization_config")
     quant_method = quant_config.get("quant_method") if quant_config else None
 
